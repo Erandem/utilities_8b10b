@@ -23,7 +23,7 @@ impl Disparity {
         }
     }
 
-    /// Takes a Positive-disparity symbol and returns the disparity-correct interpretation
+    /// Applies the current disparity to the passed symbol
     pub const fn with_disparity(self, symbol: u16) -> u16 {
         match self {
             Self::Positive => symbol,
@@ -31,6 +31,7 @@ impl Disparity {
         }
     }
 
+    /// Returns the disparity after the passed symbol has been processed
     pub const fn after_symbol(self, symbol: u16) -> Self {
         let ones = symbol.count_ones();
 

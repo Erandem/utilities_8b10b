@@ -1,6 +1,9 @@
 use crate::Disparity;
 
+/// All possible control codes
 #[repr(u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "ufmt", derive(ufmt::derive::uDebug))]
 pub enum ControlChars {
     K23_7 = 0xF7,
     K27_7 = 0xFB,
@@ -16,6 +19,33 @@ pub enum ControlChars {
 
     K29_7 = 0xFD,
     K30_7 = 0xFE,
+}
+
+impl TryFrom<u8> for ControlChars {
+    type Error = u8;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        use ControlChars::*;
+
+        match value {
+            0xF7 => Ok(K23_7),
+            0xFB => Ok(K27_7),
+
+            0x1C => Ok(K28_0),
+            0x3C => Ok(K28_1),
+            0x5C => Ok(K28_2),
+            0x7C => Ok(K28_3),
+            0x9C => Ok(K28_4),
+            0xBC => Ok(K28_5),
+            0xDC => Ok(K28_6),
+            0xFC => Ok(K28_7),
+
+            0xFD => Ok(K29_7),
+            0xFE => Ok(K30_7),
+
+            other => Err(other),
+        }
+    }
 }
 
 /// Control character lookup table (positive disparity)
@@ -303,6 +333,7 @@ pub const ENCODE_8B10B_POSITIVE: [u16; 256] = [
     0b0001_010100,
 ];
 
+/// Table containing [u8->u10] with negative disparity
 pub const ENCODE_8B10B_NEGATIVE: [u16; 256] = {
     // This code inverts the disparity of all symbols before copying them
     let mut output = [0u16; 256];
@@ -316,8 +347,12 @@ pub const ENCODE_8B10B_NEGATIVE: [u16; 256] = {
     output
 };
 
+/// Decode table containing [u10 -> u8], with positive disparity.
+/// Invalid values are represented with `0xFF`
 pub const DECODE_8B10B_POSITIVE: [u8; 1024] = generate_decode_table(&ENCODE_8B10B_POSITIVE);
 
+/// Decode table containing [u10 -> u8], with negative disparity.
+/// Invalid values are represented with `0xFF`
 pub const DECODE_8B10B_NEGATIVE: [u8; 1024] = generate_decode_table(&ENCODE_8B10B_NEGATIVE);
 
 const fn generate_decode_table(encode_table: &[u16; 256]) -> [u8; 1024] {
