@@ -1,7 +1,7 @@
 [package]
 name = "utilities_8b10b"
 description = "8b10b encoding tables and a small set of utilities"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 categories = ["embedded", "encoding"]
 repository = "https://github.com/Erandem/utilities_8b10b"
