@@ -1,0 +1,17 @@
+[package]
+name = "utilities_8b10b"
+description = "8b10b encoding tables and a small set of utilities"
+version = "0.1.0"
+edition = "2024"
+categories = ["embedded", "encoding"]
+repository = "https://github.com/Erandem/utilities_8b10b"
+keywords = ["8b10b", "arduino"]
+license = "MIT"
+
+[dependencies]
+ufmt = { version = "0.2", optional = true }
+avr-progmem = { version = "0.4", optional = true }
+
+[features]
+ufmt = ["dep:ufmt"]
+avr-progmem = ["dep:avr-progmem"]
