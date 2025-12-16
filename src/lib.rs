@@ -1,3 +1,4 @@
+#![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 #![cfg_attr(not(test), no_std)]
 #![warn(clippy::all, clippy::cargo)]
 
