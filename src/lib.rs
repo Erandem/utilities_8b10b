@@ -23,14 +23,6 @@ impl Disparity {
         }
     }
 
-    /// Applies the current disparity to the passed symbol
-    pub const fn with_disparity(self, symbol: u16) -> u16 {
-        match self {
-            Self::Positive => symbol,
-            Self::Negative => !symbol & 0x3FF,
-        }
-    }
-
     /// Returns the disparity after the passed symbol has been processed
     pub const fn after_symbol(self, symbol: u16) -> Self {
         let ones = symbol.count_ones();
@@ -57,6 +49,9 @@ impl Disparity {
     }
 }
 
+pub const fn flip_disparity(symbol: u16) -> u16 {
+    !symbol & 0x3FF
+}
 
 #[cfg(feature = "avr-progmem")]
 pub use crate::avr_progmem::decode_8b10b;
@@ -69,3 +64,32 @@ pub use crate::ser::encode_8b10b_const as encode_8b10b;
 pub use crate::ser::decode_8b10b_const as decode_8b10b;
 
 pub use crate::ser::is_comma;
+
+#[cfg(test)]
+mod tests {
+    use assert2::assert;
+
+    use crate::{Disparity, decode_8b10b, encode_8b10b, flip_disparity};
+
+    #[test]
+    fn encode_decode_flipped_disparity_start_neg() {
+        for i in 0..u8::MAX {
+            let encoded = encode_8b10b(i, false, crate::Disparity::Negative);
+            let flipped = flip_disparity(encoded.0);
+            let decoded = decode_8b10b(flipped, Disparity::Positive).unwrap();
+
+            assert!(i == decoded.0);
+        }
+    }
+
+    #[test]
+    fn encode_decode_flipped_disparity_start_pos() {
+        for i in 0..u8::MAX {
+            let encoded = encode_8b10b(i, false, crate::Disparity::Positive);
+            let flipped = flip_disparity(encoded.0);
+            let decoded = decode_8b10b(flipped, Disparity::Negative).unwrap();
+
+            assert!(i == decoded.0);
+        }
+    }
+}

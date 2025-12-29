@@ -30,7 +30,11 @@ pub const fn encode_8b10b_const(data: u8, is_control: bool, disparity: Disparity
         ENCODE_8B10B_POSITIVE[data as usize]
     };
 
-    let symbol = disparity.with_disparity(symbol_positive);
+    let symbol = match disparity {
+        Disparity::Negative => !symbol_positive & 0x3FF,
+        Disparity::Positive => symbol_positive,
+    };
+
     let new_disp = disparity.after_symbol(symbol);
 
     (symbol, new_disp)
@@ -53,14 +57,11 @@ pub const fn decode_8b10b_const(symbol: u16, disparity: Disparity) -> Option<(u8
         return None;
     }
 
-    // Validate disparity
-    let ones = symbol.count_ones();
-    if ones < 4 || ones > 6 {
-        return None;
-    }
-
     // Our lookup table only stores positive disparity
-    let symbol_positive = disparity.with_disparity(symbol);
+    let symbol_positive = match disparity {
+        Disparity::Negative => !symbol & 0x3FF,
+        Disparity::Positive => symbol,
+    };
 
     // Handle control characters seperately
     if let Some(code) = {
@@ -89,5 +90,42 @@ pub const fn decode_8b10b_const(symbol: u16, disparity: Disparity) -> Option<(u8
     } else {
         let new_disp = disparity.after_symbol(symbol);
         Some((decoded, false, new_disp))
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::{Disparity, symbols::ControlChars};
+    use super::{encode_8b10b_const, decode_8b10b_const};
+    use assert2::assert;
+
+    #[test]
+    fn test_encode_decode_neg() {
+        for i in 0..u8::MAX {
+            let s = encode_8b10b_const(i, false, Disparity::Negative);
+            let d = decode_8b10b_const(s.0, Disparity::Negative);
+
+            assert!(Some(i) == d.map(|x| x.0), "i={i}");
+        }
+    }
+
+    #[test]
+    fn test_encode_decode_pos() {
+        for i in 0..u8::MAX {
+            let s = encode_8b10b_const(i, false, Disparity::Positive);
+            let d = decode_8b10b_const(s.0, Disparity::Positive);
+
+            assert!(Some(i) == d.map(|x| x.0), "i={i}");
+        }
+    }
+
+    #[test]
+    fn encode_comma() {
+        let sp = encode_8b10b_const(ControlChars::K28_5 as u8, true, Disparity::Negative);
+        let sn = encode_8b10b_const(ControlChars::K28_5 as u8, true, Disparity::Positive);
+
+        assert!(sp.0 == 0b0011111010);
+        assert!(sn.0 == 0b1100000101);
     }
 }

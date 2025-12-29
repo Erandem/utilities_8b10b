@@ -19,7 +19,11 @@ pub fn encode_8b10b(data: u8, is_control: bool, disparity: Disparity) -> (u16, D
         ENCODE_8B10B_POSITIVE.load_at(data as usize)
     };
 
-    let symbol = disparity.with_disparity(symbol_positive);
+    let symbol = match disparity {
+        Disparity::Positive => symbol_positive,
+        Disparity::Negative => !symbol_positive & 0x3FF,
+    };
+
     let new_disp = disparity.after_symbol(symbol);
 
     (symbol, new_disp)
@@ -42,14 +46,11 @@ pub fn decode_8b10b(symbol: u16, disparity: Disparity) -> Option<(u8, bool, Disp
         return None;
     }
 
-    // Validate disparity
-    let ones = symbol.count_ones();
-    if ones < 4 || ones > 6 {
-        return None;
-    }
-
     // Our lookup table only stores positive disparity
-    let symbol_positive = disparity.with_disparity(symbol);
+    let symbol_positive = match disparity {
+        Disparity::Positive => symbol,
+        Disparity::Negative => !symbol & 0x3FF,
+    };
 
     if let Some((code, _)) = CONTROL_CHARS_POSITIVE
         .iter()
@@ -66,5 +67,41 @@ pub fn decode_8b10b(symbol: u16, disparity: Disparity) -> Option<(u8, bool, Disp
     } else {
         let new_disp = disparity.after_symbol(symbol);
         Some((decoded, false, new_disp))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{Disparity, symbols::ControlChars};
+    use super::{encode_8b10b, decode_8b10b};
+    use assert2::assert;
+
+    #[test]
+    fn test_encode_decode_neg() {
+        for i in 0..u8::MAX {
+            let s = encode_8b10b(i, false, Disparity::Negative);
+            let d = decode_8b10b(s.0, Disparity::Negative);
+
+            assert!(Some(i) == d.map(|x| x.0), "i={i}");
+        }
+    }
+
+    #[test]
+    fn test_encode_decode_pos() {
+        for i in 0..u8::MAX {
+            let s = encode_8b10b(i, false, Disparity::Positive);
+            let d = decode_8b10b(s.0, Disparity::Positive);
+
+            assert!(Some(i) == d.map(|x| x.0), "i={i}");
+        }
+    }
+
+    #[test]
+    fn encode_comma() {
+        let sp = encode_8b10b(ControlChars::K28_5 as u8, true, Disparity::Negative);
+        let sn = encode_8b10b(ControlChars::K28_5 as u8, true, Disparity::Positive);
+
+        assert!(sp.0 == 0b0011111010);
+        assert!(sn.0 == 0b1100000101);
     }
 }

@@ -12,6 +12,9 @@ license = "MIT"
 ufmt = { version = "0.2", optional = true }
 avr-progmem = { version = "0.4", optional = true }
 
+[dev-dependencies]
+assert2 = "0.3"
+
 [features]
 ufmt = ["dep:ufmt"]
 avr-progmem = ["dep:avr-progmem"]
