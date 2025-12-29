@@ -1,6 +1,5 @@
 use crate::{Disparity, is_comma};
 use crate::symbols::ControlChars;
-use crate::ser::{DataWord, Symbol};
 
 avr_progmem::progmem! {
     static progmem ENCODE_8B10B_POSITIVE: [u16; 256] = crate::symbols::ENCODE_8B10B_POSITIVE;
@@ -33,12 +32,9 @@ pub fn encode_8b10b(data: u8, is_control: bool, disparity: Disparity) -> (u16, D
 /// - [`u8`]`: decoded byte
 /// - [`bool`]`: if this is a control character
 /// - [`Disparity`]`: the new disparity
-pub fn decode_8b10b(encoded_symbol: Symbol) -> Option<DataWord> {
-    let symbol = encoded_symbol.symbol();
-    let disparity = encoded_symbol.disparity();
-
+pub fn decode_8b10b(symbol: u16, disparity: Disparity) -> Option<(u8, bool, Disparity)> {
     if is_comma(symbol) {
-        return Some(DataWord::new(ControlChars::K28_5 as u8, true, disparity.flip()));
+        return Some((ControlChars::K28_5 as u8, true, disparity.flip()));
     }
 
     // Validate that the passed value fits in a 10-bit symbol
@@ -60,7 +56,7 @@ pub fn decode_8b10b(encoded_symbol: Symbol) -> Option<DataWord> {
         .find(|&(_, symbol)| symbol == symbol_positive)
     {
         let new_disp = disparity.after_symbol(symbol);
-        return Some(DataWord::new(code, true, new_disp));
+        return Some((code, true, new_disp));
     }
 
     let decoded = DECODE_8B10B_POSITIVE.load_at(symbol_positive as usize);
@@ -69,6 +65,6 @@ pub fn decode_8b10b(encoded_symbol: Symbol) -> Option<DataWord> {
         None
     } else {
         let new_disp = disparity.after_symbol(symbol);
-        Some(DataWord::new(decoded, false, new_disp))
+        Some((decoded, false, new_disp))
     }
 }

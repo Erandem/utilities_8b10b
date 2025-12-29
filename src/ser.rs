@@ -1,18 +1,12 @@
 use crate::Disparity;
 use crate::symbols::{ControlChars, CONTROL_CHARS_POSITIVE, ENCODE_8B10B_POSITIVE, DECODE_8B10B_POSITIVE};
 
-pub const LOWER_10_BITMASK: u16 = 0x3FF;
-
 pub const fn is_comma(symbol: u16) -> bool {
     symbol == 0b0011111010 || symbol == 0b1100000101
 }
 
 #[inline(never)]
-pub const fn encode_8b10b_const(word: DataWord) -> Symbol {
-    let data = word.byte();
-    let is_control = word.is_control();
-    let disparity = word.disparity();
-
+pub const fn encode_8b10b_const(data: u8, is_control: bool, disparity: Disparity) -> (u16, Disparity) {
     let symbol_positive = if is_control {
         let mut found_control_code = None;
         let mut i = 0;
@@ -39,7 +33,7 @@ pub const fn encode_8b10b_const(word: DataWord) -> Symbol {
     let symbol = disparity.with_disparity(symbol_positive);
     let new_disp = disparity.after_symbol(symbol);
 
-    Symbol::new_unchecked(symbol, new_disp)
+    (symbol, new_disp)
 }
 
 /// The opposite of `encode_8b10b`
@@ -49,12 +43,9 @@ pub const fn encode_8b10b_const(word: DataWord) -> Symbol {
 /// - [`u8`]`: decoded byte
 /// - [`bool`]`: if this is a control character
 /// - [`Disparity`]`: the new disparity
-pub const fn decode_8b10b_const(encoded_symbol: Symbol) -> Option<DataWord> {
-    let symbol = encoded_symbol.symbol();
-    let disparity = encoded_symbol.disparity();
-
+pub const fn decode_8b10b_const(symbol: u16, disparity: Disparity) -> Option<(u8, bool, Disparity)> {
     if is_comma(symbol) {
-        return Some(DataWord::new(ControlChars::K28_5 as u8, true, disparity.flip()));
+        return Some((ControlChars::K28_5 as u8, true, disparity.flip()));
     }
 
     // Validate that the passed value fits in a 10-bit symbol
@@ -88,7 +79,7 @@ pub const fn decode_8b10b_const(encoded_symbol: Symbol) -> Option<DataWord> {
         found
     } {
         let new_disp = disparity.after_symbol(symbol);
-        return Some(DataWord::new(code, true, new_disp));
+        return Some((code, true, new_disp));
     }
 
     let decoded = DECODE_8B10B_POSITIVE[symbol_positive as usize];
@@ -97,69 +88,6 @@ pub const fn decode_8b10b_const(encoded_symbol: Symbol) -> Option<DataWord> {
         None
     } else {
         let new_disp = disparity.after_symbol(symbol);
-        Some(DataWord::new(decoded, false, new_disp))
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "ufmt", derive(ufmt::derive::uDebug))]
-pub struct DataWord {
-    byte: u8,
-    is_control: bool,
-    disparity: Disparity,
-}
-
-impl DataWord {
-    pub const fn new(byte: u8, is_control: bool, disparity: Disparity) -> Self {
-        Self {
-            byte, is_control, disparity
-        }
-    }
-
-    pub const fn byte(&self) -> u8 {
-        self.byte
-    }
-
-    pub const fn is_control(&self) -> bool {
-        self.is_control
-    }
-
-    pub const fn disparity(&self) -> Disparity {
-        self.disparity
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "ufmt", derive(ufmt::derive::uDebug))]
-pub struct Symbol {
-    symbol: u16,
-    disparity: Disparity,
-}
-
-impl Symbol {
-    pub const fn new(symbol: u16, disparity: Disparity) -> Option<Self> {
-        if symbol <= LOWER_10_BITMASK {
-            Some(Self::new_unchecked(symbol, disparity))
-        } else {
-            None
-        }
-    }
-
-    /// Creates a new [`Symbol`] without checking `symbol <= LOWER_10_BITMASK`
-    /// 
-    /// This is useful when you know the symbol is going to be valid, without
-    /// having to litter your code with panics.
-    pub const fn new_unchecked(symbol: u16, disparity: Disparity) -> Self {
-        Self {
-            symbol, disparity
-        }
-    }
-
-    pub const fn symbol(&self) -> u16 {
-        self.symbol
-    }
-
-    pub const fn disparity(&self) -> Disparity {
-        self.disparity
+        Some((decoded, false, new_disp))
     }
 }
