@@ -11,8 +11,8 @@ pub mod avr_progmem;
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "ufmt", derive(ufmt::derive::uDebug))]
 pub enum Disparity {
-    Negative,
-    Positive,
+    Negative = 0,
+    Positive = 1,
 }
 
 impl Disparity {
